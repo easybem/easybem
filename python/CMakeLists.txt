@@ -17,3 +17,7 @@ target_include_directories(
     PRIVATE
         ${PROJECT_SOURCE_DIR}/include
 )
+
+if(USE_CUDA)
+    target_compile_definitions(easybem PRIVATE USE_CUDA)
+endif()
