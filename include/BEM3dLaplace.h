@@ -10,6 +10,14 @@ void getLaplace3d (int nNodes, const double *nodes,
                    double *&V, double *&K, double *&D, double *&M,
                    int order);
 
+void getLaplace3dMass (int nNodes, const double *nodes,
+                       int nElements, const int *elements,
+                       double *&M);
+
+void getLaplace3dCurl (int nNodes, const double *nodes,
+                       int nElements, const int *elements,
+                       double *&C1, double *&C2, double *&C3);
+
 void evaluateLaplace3d (const double *nodes,
                         int nElements, const int *elements,
                         int nPoints, const double *points,
