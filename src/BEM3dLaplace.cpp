@@ -444,6 +444,120 @@ void zero (double *&matrix, int m, int n)
       matrix[idx] = 0;
 }
 
+
+void getLaplace3dMass (int np, const double *points,
+                       int ne, const int *elemNodes,
+                       double *&M)
+{
+  int i, j, k;
+  int faceNodesi[3];
+  double Pi[3][3], ni[3], Ji;
+
+  M = new double[ne*np];
+  zero(M,ne,np);
+
+  int progress = 0;
+  std::cout << "BEM 3d Laplace mass-matrix assembling - " << np << " nodes, "
+            << ne << " elements: " << progress << "%" << std::flush;
+
+  for (i=0; i<ne; i++)
+    {
+      for (k=0; k<3; k++)
+        faceNodesi[k] = elemNodes[3*i+k];
+      for (k=0; k<3; k++)
+        memcpy(Pi[k],points+3*(faceNodesi[k]-1),3*sizeof(double));
+      ni[0] = (Pi[1][1]-Pi[0][1])*(Pi[2][2]-Pi[0][2]) -
+        (Pi[1][2]-Pi[0][2])*(Pi[2][1]-Pi[0][1]);
+      ni[1] = (Pi[1][2]-Pi[0][2])*(Pi[2][0]-Pi[0][0]) -
+        (Pi[1][0]-Pi[0][0])*(Pi[2][2]-Pi[0][2]);
+      ni[2] = (Pi[1][0]-Pi[0][0])*(Pi[2][1]-Pi[0][1]) -
+        (Pi[1][1]-Pi[0][1])*(Pi[2][0]-Pi[0][0]);
+      Ji = sqrt(ni[0]*ni[0]+ni[1]*ni[1]+ni[2]*ni[2]);
+      for (k=0; k<3; k++)
+        M[i+(faceNodesi[k]-1)*ne] += Ji/6.0;
+      progress = (100*i)/ne;
+      std::cout << "\rBEM 3d Laplace mass-matrix assembling - " << np
+                << " nodes, "
+                << ne << " elements: " << progress << "%" << std::flush;
+    }
+  std::cout << "\rBEM 3d Laplace mass-matrices assembling - " << np << " nodes, "
+            << ne << " elements: 100%" << std::flush;
+  std::cout << std::endl;
+}
+
+
+void getLaplace3dCurl (int np, const double *points,
+                       int ne, const int *elemNodes,
+                       double *&C1, double *&C2, double *&C3)
+{
+  int i, j, k;
+  int faceNodesi[3];
+  double Pi[3][3], ni[3], Ji;
+  double a11, a12, a22, detA, b11, b21, b12, b22, b13, b23;
+  double y11, y21, y12, y22, y13, y23;
+
+  C1 = new double[ne*np];
+  zero(C1,ne,np);
+  C2 = new double[ne*np];
+  zero(C2,ne,np);
+  C3 = new double[ne*np];
+  zero(C3,ne,np);
+
+  int progress = 0;
+  std::cout << "BEM 3d Laplace curl-matrix assembling - " << np << " nodes, "
+            << ne << " elements: " << progress << "%" << std::flush;
+
+  for (i=0; i<ne; i++)
+    {
+      for (k=0; k<3; k++)
+        faceNodesi[k] = elemNodes[3*i+k];
+      for (k=0; k<3; k++)
+        memcpy(Pi[k],points+3*(faceNodesi[k]-1),3*sizeof(double));
+      ni[0] = (Pi[1][1]-Pi[0][1])*(Pi[2][2]-Pi[0][2]) -
+        (Pi[1][2]-Pi[0][2])*(Pi[2][1]-Pi[0][1]);
+      ni[1] = (Pi[1][2]-Pi[0][2])*(Pi[2][0]-Pi[0][0]) -
+        (Pi[1][0]-Pi[0][0])*(Pi[2][2]-Pi[0][2]);
+      ni[2] = (Pi[1][0]-Pi[0][0])*(Pi[2][1]-Pi[0][1]) -
+        (Pi[1][1]-Pi[0][1])*(Pi[2][0]-Pi[0][0]);
+      Ji = sqrt(ni[0]*ni[0]+ni[1]*ni[1]+ni[2]*ni[2]);
+      a11 = a12 = a22 = 0;
+      for (k=0; k<3; k++)
+        {
+          ni[k] /= Ji;
+          a11 += (Pi[1][k]-Pi[0][k]) * (Pi[1][k]-Pi[0][k]);
+          a22 += (Pi[2][k]-Pi[0][k]) * (Pi[2][k]-Pi[0][k]);
+          a12 += (Pi[1][k]-Pi[0][k]) * (Pi[2][k]-Pi[0][k]);
+        }
+      detA = a11*a22-a12*a12;
+      b11 = -(Pi[1][1]-Pi[0][1])*ni[2] + (Pi[1][2]-Pi[0][2])*ni[1];
+      b21 = -(Pi[2][1]-Pi[0][1])*ni[2] + (Pi[2][2]-Pi[0][2])*ni[1];
+      b12 = (Pi[1][0]-Pi[0][0])*ni[2] - (Pi[1][2]-Pi[0][2])*ni[0];
+      b22 = (Pi[2][0]-Pi[0][0])*ni[2] - (Pi[2][2]-Pi[0][2])*ni[0];
+      b13 = -(Pi[1][0]-Pi[0][0])*ni[1] + (Pi[1][1]-Pi[0][1])*ni[0];
+      b23 = -(Pi[2][0]-Pi[0][0])*ni[1] + (Pi[2][1]-Pi[0][1])*ni[0];
+      y11 = (b11*a22-b21*a12)/detA; y21 = (a11*b21-a12*b11)/detA;
+      y12 = (b12*a22-b22*a12)/detA; y22 = (a11*b22-a12*b12)/detA;
+      y13 = (b13*a22-b23*a12)/detA; y23 = (a11*b23-a12*b13)/detA;
+      C1[ne*(faceNodesi[0]-1)+i] = -y11-y21;
+      C1[ne*(faceNodesi[1]-1)+i] = y11;
+      C1[ne*(faceNodesi[2]-1)+i] = y21;
+      C2[ne*(faceNodesi[0]-1)+i] = -y12-y22;
+      C2[ne*(faceNodesi[1]-1)+i] =y12;
+      C2[ne*(faceNodesi[2]-1)+i] = y22;
+      C3[ne*(faceNodesi[0]-1)+i] = -y13-y23;
+      C3[ne*(faceNodesi[1]-1)+i] = y13;
+      C3[ne*(faceNodesi[2]-1)+i] = y23;
+      progress = (100*i)/ne;
+      std::cout << "\rBEM 3d Laplace curl-matrices assembling - " << np
+                << " nodes, "
+                << ne << " elements: " << progress << "%" << std::flush;
+    }
+  std::cout << "\rBEM 3d Laplace curl-matrices assembling - " << np << " nodes, "
+            << ne << " elements: 100%" << std::flush;
+  std::cout << std::endl;
+}
+
+
 void getLaplace3d (int np, const double *points,
                    int ne, const int *elemNodes,
                    double *&V, double *&K, double *&D, double *&M,
@@ -597,6 +711,11 @@ void getLaplace3d (int np, const double *points,
           switch (cmnIdxSize)
             {
             case 0: // disjoint panels
+              /*
+              if (i+1==1 && j>500)
+                std::cout << j+1 << std::endl;
+              //                std::cout << i+1 << " , " << j+1 << std::endl;
+              */
               for (k=0; k<3; k++)
                 {
                   u[k] = Pi[1][k]-Pi[0][k];
@@ -654,7 +773,7 @@ void getLaplace3d (int np, const double *points,
       
       progress = (100*i)/ne;
       std::cout << "\rBEM 3d Laplace assembling - " << np << " nodes, "
-                << ne << " elements : " << progress << "%" << std::flush;
+                << ne << " elements: " << progress << "%" << std::flush;
      }
   std::cout << "\rBEM 3d Laplace assembling - " << np << " nodes, "
             << ne << " elements: 100%" << std::flush;

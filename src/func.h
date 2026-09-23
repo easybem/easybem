@@ -333,7 +333,7 @@ void InsertNonuniqueSorted (C elem, C *elems, int &nelems, int ascending=1,
 
 // Find elem in elems and return its index (indexed from 1) or 0 otherwise
 template<class C>
-int Find (C elem, C *elems, int nelems)
+int Find (C elem, const C *elems, int nelems)
 {
   int i;
   for (i=0; i<nelems; i++)
@@ -350,6 +350,18 @@ void Insert (int *DOFsToDOFs1, int *nDOFsToDOFs1, int idx2);
 void InsertSymmetric (int idx1, int *DOFsToDOFs1,
   	              int *nDOFsToDOFs1, int idx2,
 		      int *DOFsToDOFs2, int *nDOFsToDOFs2);
+
+
+inline void nextIteration(int& fi, int& fj, int fjfrom, int fjto)
+{
+  if (fj < fjto)
+    ++fj;
+  else
+    {
+      ++fi;
+      fj = fjfrom;
+    }
+}
 
 
 #endif
